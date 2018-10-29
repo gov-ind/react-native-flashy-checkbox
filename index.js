@@ -1,29 +1,30 @@
-import React, { Component } from 'react';
-import { Text, Animated, Easing, StyleSheet } from 'react-native';
+import React, { Component, PureComponent } from 'react';
+import { Animated, Easing, StyleSheet } from 'react-native';
+import PropTypes from 'prop-types';
+import invariant from 'fbjs/lib/invariant';
 import Svg, { Path } from 'react-native-svg';
-import { svgPathProperties } from 'svg-path-properties';
-import { Ripple } from './src/rn-components/container';
+import Ripple from 'react-native-ripple';
+// import { svgPathProperties } from 'svg-path-properties';
 
-const easing = Easing.inOut(Easing.circle);
+import { IText } from '.';
+
+const easing = Easing.out(Easing.circle);
 const AnimatedPath = Animated.createAnimatedComponent(Path);
-
-const _boxBorder = `
+const _boxBorderPath = `
   M4 4
   L146 4
   L146 146
   L4 146
   L4 0
 `;
-
-const boxBorder = `
+const boxBorderPath = `
   M4 4
   L146 4
   L146 146
   L4 146
   L4 0
 `;
-
-const border = `
+const borderPath = `
   M30 80
   L45 60
   L65 80
@@ -32,111 +33,184 @@ const border = `
   L67 120
   L27 77
 `;
-
-const fill = `
+const fillPath = `
   M37.5 67
   L77.5 110
   L67.5 100
   L112.5 40
 `;
 
-const boxBorderLength = Math.ceil(svgPathProperties(boxBorder).getTotalLength());
-const borderLength = Math.ceil(svgPathProperties(border).getTotalLength());
-const fillLength = Math.ceil(svgPathProperties(fill).getTotalLength());
+/* const boxBorderLength = Math.ceil(svgPathProperties(boxBorderPath).getTotalLength());
+const borderLength = Math.ceil(svgPathProperties(borderPath).getTotalLength());
+const fillLength = Math.ceil(svgPathProperties(fillPath).getTotalLength()); */
 
-export default class extends Component {
+const boxBorderLength = 572;
+const borderLength = 293;
+const fillLength = 148;
+
+/* eslint-disable max-len */
+/**
+ *
+ * @augments {Component<{value: boolean, onValueChange: Function, size: number, rippleSize: number, rippleColor: string, color: string, borderColor: string, end: boolean, border: boolean, borderAnimation: boolean, style: number, contentContainerStyle: number}>}
+ *
+ */
+export class WithCheckbox extends Component {
+  static propTypes = {
+    value: PropTypes.bool,
+    onValueChange: PropTypes.func,
+    size: PropTypes.number,
+    rippleSize: PropTypes.number,
+    rippleColor: PropTypes.string,
+    color: PropTypes.string,
+    borderColor: PropTypes.string,
+    end: PropTypes.bool,
+    border: PropTypes.bool,
+    borderAnimation: PropTypes.bool,
+    style: PropTypes.any,
+    contentContainerStyle: PropTypes.any
+  };
+
   constructor(props) {
     super(props);
 
-    this.boxBorderAnim = new Animated.Value(props.value === true ? 0 : boxBorderLength);
-    this.borderAnim = new Animated.Value(props.value === true ? 0 : borderLength);
-    this.fillAnim = new Animated.Value(props.value === true ? 0 : fillLength);
+    const { input, value } = props;
+    const initialValue = (input && input.value) || value;
+
+    invariant((
+      input
+      && input.value !== null
+      && input.value !== undefined
+    ) || (
+      value !== null
+      && value !== undefined
+    ),
+    'value is a mandatory prop for ICheckbox!');
+
+    this.anim = new Animated.Value(initialValue ? 0 : 1);
+    this.fillAnim = new Animated.Value(initialValue ? 0 : 1);
   }
 
   render() {
-    const { size = 30, label, style, color = '#414141' } = this.props;
+    const {
+      size = 30,
+      rippleSize,
+      rippleColor,
+      color = '#414141',
+      borderColor = '#CECECE',
+      end,
+      border = false,
+      borderAnimation = true,
+      style,
+      contentContainerStyle,
+      children
+    } = this.props;
+
+    const borderAnim = this.anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, borderLength]
+    });
+
+    const boxBorderAnim = this.anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, boxBorderLength]
+    });
+
+    const fillAnim = this.fillAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, fillLength]
+    });
 
     return (
       <Ripple
-        divider
+        rippleSize={rippleSize}
+        color={rippleColor}
         onPressIn={this.onPressIn}
         onPress={this.onPress}
         onPressOut={this.onPressOut}
+        wrapperStyle={contentContainerStyle}
         style={[style, styles.container]}
       >
+        {!end ? children : null}
         <Svg height={size} width={size} viewBox='0 0 150 150' >
-          <Path
-            ref={ref => this.ref = ref}
-            d={_boxBorder}
-            stroke='#CECECE'
-            strokeWidth={8}
-            fill='none'
-          />
+          {border
+            ?
+            <Path
+              d={_boxBorderPath}
+              stroke={borderColor}
+              strokeWidth={8}
+              fill='none'
+            />
+            :
+            null}
+          {border && borderAnimation
+            ?
+            <AnimatedPath
+              d={boxBorderPath}
+              stroke={color}
+              strokeWidth={8}
+              strokeDasharray={[boxBorderLength, boxBorderLength]}
+              strokeDashoffset={boxBorderAnim}
+              fill='none'
+            />
+            :
+            null}
           <AnimatedPath
-            ref={ref => this.ref = ref}
-            d={boxBorder}
-            stroke={color}
-            strokeWidth={8}
-            strokeDasharray={[boxBorderLength, boxBorderLength]}
-            strokeDashoffset={this.boxBorderAnim}
-            fill='none'
-          />
-          <AnimatedPath
-            ref={ref => this.ref = ref}
-            d={border}
+            d={borderPath}
             stroke={color}
             strokeWidth={8}
             strokeDasharray={[borderLength, borderLength]}
-            strokeDashoffset={this.borderAnim}
+            strokeDashoffset={borderAnim}
             fill='none'
           />
           <AnimatedPath
-            ref={ref => this.ref2 = ref}
-            d={fill}
+            d={fillPath}
             stroke={color}
             strokeWidth={25}
             strokeDasharray={[fillLength, fillLength]}
-            strokeDashoffset={this.fillAnim}
+            strokeDashoffset={fillAnim}
             fill='none'
           />
         </Svg>
-        {label
-          ? <Text style={styles.text}>{label}</Text>
-          : null}
+        {end ? children : null}
       </Ripple>
     );
   }
 
   onPressIn = () => {
-    if (this.props.value) {
+    const { input, value } = this.props;
+
+    if ((input && input.value) || value) {
       Animated.timing(this.fillAnim, {
-        toValue: fillLength,
+        toValue: 1,
         useNativeDriver: true,
         easing
       }).start();
     }
     else {
-      Animated.parallel([
-        Animated.timing(this.boxBorderAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          easing
-        }),
-        Animated.timing(this.borderAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          easing
-        })
-      ]).start();
+      Animated.timing(this.anim, {
+        toValue: 0,
+        useNativeDriver: true,
+        easing
+      }).start();
     }
-  }
+  };
 
   onPress = () => {
-    this.props.onValueChange && this.props.onValueChange(!this.props.value);
-  }
+    const { input, value, onValueChange } = this.props;
+ 
+    if (input) {
+      input.onChange(!input.value);
+      onValueChange && onValueChange(!input.value);
+    }
+    else {
+      onValueChange && onValueChange(!value);
+    }
+  };
 
   onPressOut = () => {
-    if (this.props.value) {
+    const { input, value } = this.props;
+
+    if ((input && input.value) || value) {
       Animated.timing(this.fillAnim, {
         toValue: 0,
         useNativeDriver: true,
@@ -144,48 +218,57 @@ export default class extends Component {
       }).start();
     }
     else {
-      Animated.parallel([
-        Animated.timing(this.boxBorderAnim, {
-          toValue: boxBorderLength,
-          useNativeDriver: true,
-          easing
-        }),
-        Animated.timing(this.borderAnim, {
-          toValue: borderLength,
-          useNativeDriver: true,
-          easing
-        })
-      ]).start();
-    }
-  }
-
-  componentWillUpdate(nextProps) {
-    Animated.parallel([
-      Animated.timing(this.boxBorderAnim, {
-        toValue: nextProps.value ? 0 : boxBorderLength,
+      Animated.timing(this.anim, {
+        toValue: 1,
         useNativeDriver: true,
         easing
-      }),
-      Animated.timing(this.borderAnim, {
-        toValue: nextProps.value ? 0 : borderLength,
+      }).start();
+    }
+  };
+
+  componentWillUpdate(nextProps) {
+    const nextValue = (nextProps.input && nextProps.input.value) || nextProps.value;
+
+    Animated.parallel([
+      Animated.timing(this.anim, {
+        toValue: nextValue ? 0 : 1,
         useNativeDriver: true,
         easing
       }),
       Animated.timing(this.fillAnim, {
-        toValue: nextProps.value ? 0 : fillLength,
+        toValue: nextValue ? 0 : 1,
         useNativeDriver: true,
         easing
       })
     ]).start();
   }
-};
+}
+
+/* eslint-disable max-len */
+/**
+ *
+ * @augments {PureComponent<{label: string, labelStyle: number, value: boolean, onValueChange: Function, size: number, rippleSize: number, rippleColor: string, color: string, borderColor: string, end: boolean, border: boolean, borderAnimation: boolean, style: number, contentContainerStyle: number}>}
+ *
+ */
+export default class extends PureComponent {
+  render() {
+    const { label, labelStyle, ...rest } = this.props;
+
+    return (
+      <WithCheckbox border={true} {...rest}>
+        {label ? <IText divider style={[styles.label, labelStyle]}>{label}</IText> : null}
+      </WithCheckbox>
+    );
+  }
+}
 
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
+    padding: 8
   },
-  text: {
+  label: {
     marginLeft: 8,
     marginRight: 8
   }
